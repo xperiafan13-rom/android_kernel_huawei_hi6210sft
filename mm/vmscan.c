@@ -814,7 +814,17 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			 * (loop masks off __GFP_IO|__GFP_FS for this reason);
 			 * but more thought would probably show more reasons.
 			 */
-			if (global_reclaim(sc) ||
+			/* Case 1 above */
+			if (current_is_kswapd() &&
+			    PageReclaim(page) &&
+			    zone_is_reclaim_writeback(zone)) {
+				unlock_page(page);
+				congestion_wait(BLK_RW_ASYNC, HZ/10);
+				zone_clear_flag(zone, ZONE_WRITEBACK);
+				goto keep;
+
+			/* Case 2 above */
+			} else if (global_reclaim(sc) ||
 			    !PageReclaim(page) || !may_enter_fs) {
 				/*
 				 * This is slightly racy - end_page_writeback()
@@ -830,8 +840,9 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 				SetPageReclaim(page);
 				nr_writeback++;
 				goto keep_locked;
+			} else {
+				wait_on_page_writeback(page);
 			}
-			wait_on_page_writeback(page);
 		}
 
 		if (!force_reclaim)
@@ -1493,8 +1504,10 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
 	 *                     isolated page is PageWriteback
 	 */
 	if (nr_writeback && nr_writeback >=
-			(nr_taken >> (DEF_PRIORITY - sc->priority)))
+			(nr_taken >> (DEF_PRIORITY - sc->priority))) {
 		wait_iff_congested(zone, BLK_RW_ASYNC, HZ/10);
+		zone_set_flag(zone, ZONE_WRITEBACK);
+	}
 
 	/*
 	 * Similarly, if many dirty pages are encountered that are not
@@ -2876,6 +2889,8 @@ static bool kswapd_shrink_zone(struct zone *zone,
 
 	if (nr_slab == 0 && !zone_reclaimable(zone))
 		zone->all_unreclaimable = 1;
+
+	zone_clear_flag(zone, ZONE_WRITEBACK);
 
 	return sc->nr_scanned >= sc->nr_to_reclaim;
 }
