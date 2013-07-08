@@ -6439,6 +6439,8 @@ static void mem_cgroup_css_offline(struct cgroup *cont)
 
 	kmem_cgroup_css_offline(memcg);
 
+	kmem_cgroup_css_offline(memcg);
+
 	mem_cgroup_invalidate_reclaim_iterators(memcg);
 
 	/*
