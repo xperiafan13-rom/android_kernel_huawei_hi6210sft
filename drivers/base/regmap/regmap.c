@@ -300,12 +300,14 @@ static void regmap_unlock_mutex(void *__map)
 }
 
 static void regmap_lock_spinlock(void *__map)
+__acquires(&map->spinlock)
 {
 	struct regmap *map = __map;
 	spin_lock(&map->spinlock);
 }
 
 static void regmap_unlock_spinlock(void *__map)
+__releases(&map->spinlock)
 {
 	struct regmap *map = __map;
 	spin_unlock(&map->spinlock);
