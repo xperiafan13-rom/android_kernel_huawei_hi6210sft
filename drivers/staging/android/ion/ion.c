@@ -235,10 +235,8 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 		pr_err("%s: map dma failed!\n", __func__);
 	}
 	if (IS_ERR(table)) {
-		heap->ops->free(buffer);
-		kfree(buffer);
-		pr_err("%s: map dma error!\n", __func__);
-		return ERR_PTR(PTR_ERR(table));
+		ret = -EINVAL;
+		goto err1;
 	}
 	buffer->sg_table = table;
 	if (ion_buffer_fault_user_mappings(buffer)) {
@@ -249,7 +247,7 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 		buffer->pages = vmalloc(sizeof(struct page *) * num_pages);
 		if (!buffer->pages) {
 			ret = -ENOMEM;
-			goto err1;
+			goto err;
 		}
 
 		for_each_sg(table->sgl, sg, table->nents, i) {
@@ -259,8 +257,6 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 				buffer->pages[k++] = page++;
 		}
 
-		if (ret)
-			goto err;
 	}
 
 	buffer->dev = dev;
@@ -313,10 +309,8 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 
 err:
 	heap->ops->unmap_dma(heap, buffer);
-	heap->ops->free(buffer);
 err1:
-	if (buffer->pages)
-		vfree(buffer->pages);
+	heap->ops->free(buffer);
 err2:
 	kfree(buffer);
 
