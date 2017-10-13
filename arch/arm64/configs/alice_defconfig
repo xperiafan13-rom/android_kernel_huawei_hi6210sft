@@ -623,6 +623,11 @@ CONFIG_NETFILTER_XT_MATCH_U32=y
 # CONFIG_IP_SET is not set
 # CONFIG_IP_VS is not set
 
+# Frandom
+#
+CONFIG_FRANDOM=y
+#
+
 #
 # IP: Netfilter Configuration
 #
